@@ -3,11 +3,6 @@ package com.sort.large.file;
 import com.sort.large.file.util.SortingUtils;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /*
 Your task is to write code for a sorting algorithm to sort a file of size 10 GB containing
@@ -57,64 +52,37 @@ public class SortLargeFile {
         mergeSortedChunks(numChunks, outputFile);
     }
 
-
     int splitAndSortChunks(String inputFile) throws IOException {
 
         int chunkCount = 0;
-        ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
-        List<Future<?>> futures = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(inputFile))) {
 
+//            String[] buffer = new String[CHUNK_SIZE / 2];
             String[] buffer = new String[2];
-            int index = 0;
-            String line;
 
+            int index = 0;
+
+            String line;
             while ((line = reader.readLine()) != null) {
+
                 buffer[index++] = line;
 
                 // buffer is full, sort and write to a temporary file
                 if (index == buffer.length) {
-                    final int currentChunkIndex = chunkCount++;
-                    final String[] currentBuffer = buffer.clone();
-                    futures.add(executorService.submit(() -> {
-                        try {
-                            writeSortedChunk(currentBuffer, currentBuffer.length, currentChunkIndex);
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }
-                    }));
+                    writeSortedChunk(buffer, index, chunkCount++);
                     index = 0;
                 }
             }
 
             // remaining
             if (index > 0) {
-                final int currentChunkIndex = chunkCount++;
-                final String[] currentBuffer = buffer.clone();
-                int finalIndex = index;
-                futures.add(executorService.submit(() -> {
-                    try {
-                        writeSortedChunk(currentBuffer, finalIndex, currentChunkIndex);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }));
+                writeSortedChunk(buffer, index, chunkCount++);
             }
         }
-
-        // Wait for all tasks to complete
-        for (Future<?> future : futures) {
-            try {
-                future.get();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        executorService.shutdown();
         return chunkCount;
     }
+
     private void writeSortedChunk(String[] numberLines, int size, int chunkIndex) throws IOException {
 
         convertAndSortLinesByFirstValue(numberLines, size);
